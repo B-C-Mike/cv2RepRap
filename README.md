@@ -14,6 +14,8 @@ Hardware part:
 Software part: 
 - 
 - RepRap (Arduino firmware)
-- OpenCV
+- OpenCV 3.1.0
 - Raspbian
-- python
+- Python 2.7.9
+
+by: Ertew
