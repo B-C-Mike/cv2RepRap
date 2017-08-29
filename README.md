@@ -2,6 +2,7 @@
 Computer vision system (rPi + python + OpenCV) that responds by driving 4-axis manipulator (RepRap via G-Code). 
 
 Hardware part: 
+-
 - rPi 2B
 - CSI camera
 - Arduino Mega
@@ -12,3 +13,7 @@ Hardware part:
 
 Software part: 
 - 
+- RepRap (Arduino firmware)
+- OpenCV
+- Raspbian
+- python
