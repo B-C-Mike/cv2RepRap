@@ -25,19 +25,19 @@ ser = serial.Serial(
   writeTimeout = 2,
 )
 
-comport = 0 #null, please update
+comport = 0 #null, please update from main module
 speed = 115200 #default for reprap
-port_open = 0 #do not read/send, wait for port
-busy = 1 #do not send, wait for reply
+port_open = 0 #do not read/send, wait for port open command
+busy = 1 #do not send, wait for reply from reprap
 reply_time = 0
 sleep_time = 0
-debug_r = 1 # all data read from serial
+debug_r = 1 # print all data read from serial
 debug_r_begin = ""
 debug_r_end = ""
-debug_w = 1 # all data write to serial
+debug_w = 1 # print all data write to serial
 debug_w_begin = ""
 debug_w_end = ""
-debug_s = 0 # data read from stack
+debug_s = 0 # print data read from stack
 debug_s_begin = ""
 debug_s_end = ""
 
@@ -47,19 +47,90 @@ Z = 100
 F = 5000
 A = 0
 B = 0
-servo_time = 500
+C = 0
+servo_time = 1000
 
 startup = [ commands.READ_POS, commands.SERVO_WAIT, commands.HOME]
 stack = startup
 
-def moving():
-  if len(stack): # commands to go
-    return (1)
-  return (busy)
+def moving(): # true when reprap have orders to do
+  # return number of commands to send
+  # d + 1 if reprap have one in internal buffer
+  return (len(stack) + busy)
+
+def move (x=None, y=None, z=None, f=None, a=None, b=None, c=None, d=None,
+          dx=None, dy=None, dz=None, da=None, db=None, dc=None):
+  move_xyz = 0
+  move_abc = 0
+  global X
+  global Y
+  global Z
+  global F
+  global A
+  global B
+  global C
+  
+
+  if x is not None:
+    X = x
+    move_xyz = 1
+  if dx is not None:
+    X += dx
+    move_xyz = 1
+  if y is not None:
+    Y = y
+    move_xyz = 1
+  if dy is not None:
+    Y += dy
+    move_xyz = 1
+  if z is not None:
+    Z = z
+    move_xyz = 1
+  if dz is not None:
+    Z += dz
+    move_xyz = 1
+  if f is not None:
+    F = f
+  if move_xyz:
+    stack.insert(0, [X, Y, Z, F])
+
+  if a is not None:
+    A = a
+    move_abc = 1
+    stack.insert(0, [0, A])
+  if da is not None:
+    A += da
+    move_abc = 1
+    stack.insert(0, [0, A])
+  if b is not None:
+    B = b
+    move_abc = 1
+    stack.insert(0, [1, B])
+  if db is not None:
+    B += db
+    move_abc = 1
+    stack.insert(0, [1, B])
+  if c is not None:
+    C = c
+    move_abc = 1
+    stack.insert(0, [2, C])
+  if dc is not None:
+    C += dc
+    move_abc = 1
+    stack.insert(0, [2, C])
+  if d is not None:
+    stack.insert(0, [100, d])
+    move_abc = 0
+    
+  if move_abc:
+    stack.insert(0, [100, servo_time])
+
+
+  
 
 def move3dS(array): # public add commnad to stack
   if len(array)<3:
-    print "ERROR, expected array [X, Y, Z] or [X, Y, Z, F]"
+    print ("ERROR, expected array [X, Y, Z] or [X, Y, Z, F]")
     return (0)
   if array[0]: # X != 0
     X = array[0]
@@ -73,7 +144,7 @@ def move3dS(array): # public add commnad to stack
 
 def moveAB(array):
   if len(array)<2: 
-    print "ERROR, expected array [A, B] or [A, B, nodelay]"
+    print ("ERROR, expected array [A, B] or [A, B, nodelay]")
     return (0)
   if array[0] != A:
     A = array[0]
@@ -105,7 +176,7 @@ def open(): # public
   try:
     ser.open()
   except:
-    print "ERROR, wrong port!"
+    print ("ERROR, wrong port!")
     exit()
   time.sleep(0.1)
   ser.setDTR(True)
@@ -113,7 +184,7 @@ def open(): # public
   ser.setDTR(False) # reset reprap
   time.sleep(4) #wait until reprap boot
   if ser.inWaiting() < 500:
-    print "ERROR, no reprap connected" 
+    print ("ERROR, no reprap connected") 
     return(0)
   ser.flushInput()
   port_open = 1
@@ -133,10 +204,10 @@ def read(): # private check serial port and read
     if ser.inWaiting():
       inp = ser.readline()
       if debug_r:
-        print debug_r_begin + "[IN]" + inp + debug_r_end
+        print (debug_r_begin + "[IN]" + inp + debug_r_end)
       return(inp)
   except:
-    print "ERROR reading seial"
+    print ("ERROR reading seial")
     exit()
   return (0)
 
@@ -148,9 +219,9 @@ def write(string): # private check serial port and send command
     ser.write(string)
     ser.write("\n")
     if debug_w:
-      print debug_w_begin + "[OUT]" + string + debug_w_end
+      print (debug_w_begin + "[OUT]" + string + debug_w_end)
   except:
-    print "ERROR sending serial"
+    print ("ERROR sending serial")
     exit()
 
 class ThreadingExample(object): # private create commands dispatcher
@@ -181,6 +252,7 @@ class ThreadingExample(object): # private create commands dispatcher
     global Z
     global A
     global B
+    global C
 
     while True:
       # Do something
@@ -189,7 +261,7 @@ class ThreadingExample(object): # private create commands dispatcher
         #print input
         if "ok" in input:
           busy = 0
-          print "_ok"
+          print ("_ok")
         if "X:" in input:
           list1 = input.split("X:")
           list2 = list1[1].split(":")
@@ -209,7 +281,7 @@ class ThreadingExample(object): # private create commands dispatcher
         if busy: 
           reply_time += 1 # every 100ms
           if reply_time>600: # 60s
-            print "ERROR: printer not respond, connection lost!"
+            print ("ERROR: printer not respond, connection lost!")
             exit()
         if not busy:
           reply_time=0
@@ -221,45 +293,51 @@ class ThreadingExample(object): # private create commands dispatcher
           if len(stack):
             order = stack.pop()
             if debug_s:
-              print debug_s_begin + "[STCK]" + order + debug_s_end
-            return(inp)
+              print (debug_s_begin + "[STCK]" + order + debug_s_end)
+            #return(inp)
             if isinstance(order, list):
-              if len(order) == 2: # servo controll
-                var = "M280 P"+str(order[0])+" S"+str(order[1])
+              if len(order) == 2: # servo controll or delay
+                if order[0]<100:
+                  var = "M280 P"+str(order[0])+" S"+str(order[1])
+                if order[0]==100:
+                  var = "G4 P" + order[1]
+                if order[0]>100:
+                  var = "G4 P1000"
                 write(var)
                 print(var)
               if len(order) == 4: # stepper controll
                 var = "G1 X"+str(order[0])+" Y"+str(order[1])+" Z"+str(order[2])+" F"+str(order[3])
                 write(var)
-              print order
+              print (order)
             if not isinstance(order, list):
               if order == commands.NULL:
                 write("M82")
                 if debug_s:
-                  print debug_s_begin + "[=] NULL M82" + debug_s_end
+                  print (debug_s_begin + "[=] NULL M82" + debug_s_end)
               if order == commands.HOME:
                 write("G28")
                 if debug_s:
-                  print debug_s_begin + "[=] HOME" + debug_s_end
+                  print (debug_s_begin + "[=] HOME" + debug_s_end)
               if order == commands.SERVO_WAIT:
                 write("G4 P" + servo_time)
                 if debug_s:
-                  print debug_s_begin + "[=] SERVO_WAIT" + debug_s_end
+                  print (debug_s_begin + "[=] SERVO_WAIT" + debug_s_end)
               if order == commands.WAIT1s:
                 write("G4 P1000")
                 if debug_s:
-                  print debug_s_begin + "[=] WAIT1s" + debug_s_end
+                  print (debug_s_begin + "[=] WAIT1s" + debug_s_end)
               if order == commands.READ_POS:
                 write("M114")
                 if debug_s:
-                  print debug_s_begin + "[=] READ_POS" + debug_s_end
+                  print (debug_s_begin + "[=] READ_POS" + debug_s_end)
 
 
       time.sleep(self.interval)
+      
 
 
 
-print "test"
+print ("test")
 
 
 
@@ -267,7 +345,7 @@ print "test"
 
 def connect(): # public run commands dispatcher
   example = ThreadingExample()
-  print "connect"
+  print ("connect")
 
 
 
