@@ -12,7 +12,7 @@ import cv2
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import time
-import threading
+from threading import Thread, Event
 #from multiprocessing import Process, Pipe
 
 
@@ -25,6 +25,7 @@ out_left = 340
 out_right = 164
 out_top = 140
 out_bottom = 140
+
 # scale X = out_width / (in_width - left - right)
 # scale Y =    height / (in_height - top - bottom)
 
@@ -44,12 +45,16 @@ over_id = 0 # small overlay from detector
 over = [detector_img,detector_img,detector_img]
 disp_overlay_id = 0 # full overlay for display
 disp_overlay = [cam_img,cam_img,cam_img]
+disp_out_id = 0 # content shoved on display
+disp_out = [cam_img,cam_img,cam_img]
 
 counter = 0
 cam_counter = 0
 scaler_counter = 0
 detector_counter = 0
+mixer_counter = 0
 display_counter = 0
+
 
 
 
@@ -62,11 +67,10 @@ def blend_transparent_overlay(bg, overlay, transparent_color, transparency=0):
   background_mask = cv2.compare(grayscale, transparent_color, cv2.CMP_EQ)
   # inverse - create bg mask
   overlay_mask = cv2.bitwise_not(background_mask)
-
-  # mix bg with overlay - create transparent overlay
-  transparency = transparency/250.0
-  overlay = cv2.addWeighted(bg, transparency, overlay, 1-transparency, 0)
-  
+  if transparency:
+    # mix bg with overlay - create transparent overlay
+    transparency = transparency/250.0
+    overlay = cv2.addWeighted(bg, transparency, overlay, 1-transparency, 0)
   # cut bg and overlay by mask 
   bg = cv2.bitwise_and(bg, bg, mask=background_mask)
   overlay = cv2.bitwise_and(overlay,overlay, mask=overlay_mask)
@@ -75,93 +79,18 @@ def blend_transparent_overlay(bg, overlay, transparent_color, transparency=0):
 
 
 
-
-
-class camThread(threading.Thread):
+    
+class camThreadInput(Thread):
   def __init__(self):
     #self.interval = interval
-    thread = threading.Thread(target=self.run, args=())
+    thread = Thread(target=self.run, args=())
     thread.daemon = True
     thread.start()
 
   def run(self):
-    global running
-    global out_id
-    global out
-    global over_id
-    global over
-    global counter
-    global in_width
-    global in_height
-    global out_width
-    global out_height
-    global out_left
-    global out_right
-    global out_top
-    global out_bottom
-    global transparent
-
-    camera = PiCamera()
-    camera.resolution = (in_width, in_height) # (2592x1944)/3
-    camera.framerate = 20
-    camera.hflip=True
-    camera.vflip=True
-    rawCapture = PiRGBArray(camera, size=(in_width, in_height))
-    time.sleep(0.2)
-    image = np.zeros((in_height, in_width, 3), np.uint8)
-
-    
-    for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-    #while True:
-      cv2.imshow("Frame", image) # show last frame
-      cv2.waitKey(1) # and display it
-      
-      image = frame.array #get new image from camera
-      rawCapture.truncate(0) #and clear buffer for next frame
-      #print("raw image "+str(image.shape[1])+" x "+str(image.shape[0]))
-
-
-      out_next = out_id+1 # switch index 
-      if out_next>=3:     # (analying thread get last frame from
-        out_next = 0      #       modlue.out[module.out_id]    )
-
-      image_crop = image[out_top:(in_height-out_bottom),out_left:(in_width-out_right)]
-      out[out_next] = cv2.resize(image_crop, (out_width, out_height)) # crop, resize and upload
-#print(" "+str(.shape[1])+" x "+str(.shape[0]))
-      out_id = out_next # indicate the most actual image
-
-      over_small = cv2.resize(over[over_id], (in_width-out_left-out_right, in_height-out_top-out_bottom)) #
-      # get the most actual overlay image and resize to expected size
-      
-      over_full = np.zeros((in_height, in_width, 3), np.uint8) # create full size transparent image
-      over_full[:] = transparent
-      over_full[out_top:(in_height-out_bottom), out_left:(in_width-out_right)] = over_small # and paste resized overlay on top
-      image = blend_transparent_overlay(image, over_full, transparent[1], 70)
-      #cv2.imshow("small", over_small)
-      #cv2.imshow("full", over_full)
-      
-      counter += 1
-      print (counter)
-      if not running:
-        cv2.destroyAllWindows()
-        #camera.close()
-        break
-
-    
-class camThreadInput(threading.Thread):
-  def __init__(self):
-    #self.interval = interval
-    thread = threading.Thread(target=self.run, args=())
-    thread.daemon = True
-    thread.start()
-
-  def run(self):
-    global running
     global cam_out_id
     global cam_out
     global cam_counter
-    global in_width
-    global in_height
 
     camera = PiCamera()
     camera.resolution = (in_width, in_height) # (2592x1944)/3
@@ -188,31 +117,19 @@ class camThreadInput(threading.Thread):
         break
 
     
-class camThreadScaler(threading.Thread):
+class camThreadScaler(Thread):
   def __init__(self):
     #self.interval = interval
-    thread = threading.Thread(target=self.run, args=())
+    thread = Thread(target=self.run, args=())
     thread.daemon = True
     thread.start()
 
   def run(self):
-    global running
-    global cam_out_id
-    global cam_out
     global out_id
     global out
     global disp_overlay_id
     global disp_overlay
     global scaler_counter
-    global in_width
-    global in_height
-    global out_width
-    global out_height
-    global out_left
-    global out_right
-    global out_top
-    global out_bottom
-    #global transparent
 
     while running:
       #cv2.imshow("Frame", image) # show last frame
@@ -224,15 +141,11 @@ class camThreadScaler(threading.Thread):
         
       image = cam_out[cam_out_id] #get new image from camera buffer
       image_crop = image[out_top:(in_height-out_bottom),out_left:(in_width-out_right)]
-      out[out_next] = cv2.resize(image_crop, (out_width, out_height), interpolation=cv2.INTER_NEAREST) # crop, resize and upload
+      out[out_next] = cv2.resize(image_crop, (out_width, out_height)) # crop, resize and upload # , interpolation=cv2.INTER_NEAREST)
       out_id = out_next # indicate the most actual image
 
-      
-#print(" "+str(.shape[1])+" x "+str(.shape[0]))
-
-      over_small = cv2.resize(over[over_id], (in_width-out_left-out_right, in_height-out_top-out_bottom), interpolation=cv2.INTER_NEAREST) #
+      over_small = cv2.resize(over[over_id], (in_width-out_left-out_right, in_height-out_top-out_bottom)) # , interpolation=cv2.INTER_NEAREST)
       # get the most actual overlay image and resize to expected size
-      
       
       over_full = np.zeros((in_height, in_width, 3), np.uint8) # create full size image with "transparent" bg
       over_full[:] = transparent
@@ -241,8 +154,6 @@ class camThreadScaler(threading.Thread):
       disp_overlay[out_next] = over_full
       disp_overlay_id = out_next
       
-      #image = blend_transparent_overlay(image, over_full, transparent[1], 70)
-      
       scaler_counter += 1
       time.sleep(0.05)
       #print (scaler_counter, "scaler")
@@ -250,32 +161,55 @@ class camThreadScaler(threading.Thread):
         break
 
     
-class camThreadDisplay(threading.Thread):
+class camThreadMix(Thread):
   def __init__(self):
     #self.interval = interval
-    thread = threading.Thread(target=self.run, args=())
+    thread = Thread(target=self.run, args=())
     thread.daemon = True
     thread.start()
 
   def run(self):
-    global running
-    global display_counter
-    global transparent
+    global mixer_counter
+    global disp_out_id
+    global disp_out
 
     while running:
       bg = cam_out[cam_out_id]
       overlay = disp_overlay[disp_overlay_id]
-      image = bg
-      image = blend_transparent_overlay(bg, overlay, transparent[1], 90)
+      image = blend_transparent_overlay(bg, overlay, transparent[1], 0)
+      
+      disp_out[0] = image
+      
+      mixer_counter += 1
+      #print (mixer_counter, "disp")
+      if not running:
+        break
+
+    
+class camThreadDisplay(Thread):
+  def __init__(self):
+    #self.interval = interval
+    thread = Thread(target=self.run, args=())
+    thread.daemon = True
+    thread.start()
+
+  def run(self):
+    global display_counter
+
+    while running:
+      #bg = cam_out[cam_out_id]
+      #overlay = disp_overlay[disp_overlay_id]
+      image = disp_out[disp_out_id]
+      #image = blend_transparent_overlay(bg, overlay, transparent[1], 90)
       
       cv2.imshow("Frame", image) # show last frame
-      cv2.waitKey(1) # and display it
+      cv2.waitKey(100) # and display it
       
 
 #print(" "+str(.shape[1])+" x "+str(.shape[0]))
       
       display_counter += 1
-      print (display_counter, "disp")
+      #print (display_counter, "disp")
       if not running:
         cv2.destroyAllWindows()
         break
@@ -289,6 +223,7 @@ def start():
     running = True
     cam_input = camThreadInput()
     cam_scaler = camThreadScaler()
+    cam_mixer = camThreadMix()
     cam_display = camThreadDisplay()
 
 def stop():
@@ -305,6 +240,7 @@ time.sleep(2)
 detector_counter = 0
 cam_counter = 0
 scaler_counter = 0
+mixer_counter = 0
 display_counter = 0
 
 #time.sleep(ti_me)
@@ -346,6 +282,11 @@ time.sleep(1)
 print("detector FPS: " + str(detector_counter/float(ti_me)) )
 print("camera FPS: " + str(cam_counter/float(ti_me)) )
 print("scaler FPS: " + str(scaler_counter/float(ti_me)) )
+print("mixer FPS: " + str(mixer_counter/float(ti_me)) )
 print("display FPS: " + str(display_counter/float(ti_me)) )
 
+import os
+print(os.popen("vcgencmd measure_temp").readline())
+import sys
+print (sys.version_info)
 
