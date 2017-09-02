@@ -11,7 +11,7 @@
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import math
-import numpy
+import numpy as np
 import time
 import cv2
 import sys
@@ -221,7 +221,7 @@ framerate = 5
 
 
 # """ # < uncomment
-  """   < comment all below
+"""   < comment all below
 
 # initialize the camera and grab a reference to the raw camera capture
 camera = PiCamera()
@@ -234,5 +234,5 @@ camera.shutter_speed=20*1000 #us
 camera.framerate = 4
 rawCapture = PiRGBArray(camera, size=(camx, camy))
 
-
+"""
 
