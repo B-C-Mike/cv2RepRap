@@ -31,7 +31,7 @@ import os
 
 import sys
 print (sys.version_info[0],sys.version_info[1],sys.version_info[2])
-print "\x1b[8;20;100t"
+print "\033[8;20;100t"
 print bcolors.WARNING+'Doing something imporant in the background, '+bcolors.ENDC, 
 
 
