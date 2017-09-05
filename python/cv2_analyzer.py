@@ -17,13 +17,21 @@ import cv2_camera_input as camera
 camera.camera = PiCamera()
 camera.camera.shutter_speed=35*1000
 camera.start()
+camera.overlay_transparency = 160
 print ("starting")
 time.sleep(2)
 
 
 
 
-
+def scale(camx, camy):
+  xscale=2.0/1.0 # px/mm
+  zscale=-2.0/1.0 # px/mm
+  dx = 0
+  dz = 180
+  x = (camy / xscale)+dx
+  z = (camx / zscale)+dz
+  return x, z
 
 while True:
     crop=cv2.cvtColor(camera.getImage(), cv2.COLOR_BGR2GRAY)
@@ -94,9 +102,9 @@ while True:
                     box=np.int0(box)
                     cv2.drawContours(im2, [box], 0, (0,0,0), 1)
                     cv2.arrowedLine(im2, (cx, cy), (cx+int(50*math.cos(rect[2]*math.pi/180)), cy+int(50*math.sin(rect[2]*math.pi/180))), (0,0,0), 2)
-                    xscale=182.0/100.0 # px/mm
-                    yscale=182.0/100.0 # px/mm
-                    im2=cv2.putText(im2, "x="+str(int(cx/xscale))+"mm y="+str(int(-cy/yscale))+"mm", (cx+20, cy-20), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0))
+
+                    x, z = scale(cx,cy)
+                    im2=cv2.putText(im2, "x="+str(int(x))+"mm z="+str(int(z))+"mm", (cx+20, cy-20), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0))
             if m_size==t_size:
                     for i in range(3):
                             cv2.line(im2, (triangle[i][0][0], triangle[i][0][1]), (triangle[(i+1)%3][0][0], triangle[(i+1)%3][0][1]), (0,0,0), 2)
