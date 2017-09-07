@@ -1,3 +1,9 @@
+# import reprap_serial_printer as rp
+# rp.comport = "/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_556393031353516111E0-if00"
+
+# na starcie wylaczyc wszystkie serwa (0)
+
+
 import time
 import serial
 import sys
@@ -41,16 +47,16 @@ debug_s = 0 # print data read from stack
 debug_s_begin = ""
 debug_s_end = ""
 
-X = 100
-Y = 100
-Z = 100
-F = 5000
+X = 50
+Y = 150
+Z = 280
+F = 1000
 A = 0
 B = 0
 C = 0
-servo_time = 1000
+servo_time = 500
 
-startup = [ commands.READ_POS, commands.SERVO_WAIT, commands.HOME]
+startup = [ [0,0], [1,0], [2,0], [X, Y, Z, F], commands.READ_POS, commands.SERVO_WAIT, commands.HOME ]
 stack = startup
 
 def moving(): # true when reprap have orders to do
@@ -265,29 +271,29 @@ class ThreadingExample(object): # private create commands dispatcher
         if "X:" in input:
           list1 = input.split("X:")
           list2 = list1[1].split(":")
-          X = float(re.sub(r'[^\d-]+', '',list2[0]))
+          #X = float(re.sub(r'[^\d-]+', '',list2[0]))
           #print "_X", X
         if "Y:" in input:
           list1 = input.split("Y:")
           list2 = list1[1].split(":")
-          Y = float(re.sub(r'[^\d-]+', '',list2[0]))
+          #Y = float(re.sub(r'[^\d-]+', '',list2[0]))
         if "Z:" in input:
           list1 = input.split("Z:")
           list2 = list1[1].split(":")
-          Z = float(re.sub(r'[^\d-]+', '',list2[0]))
+          #Z = float(re.sub(r'[^\d-]+', '',list2[0]))
 
         # more input tests
 
         if busy: 
           reply_time += 1 # every 100ms
-          if reply_time>600: # 60s
+          if reply_time>6000: # 60s
             print ("ERROR: printer not respond, connection lost!")
             exit()
         if not busy:
           reply_time=0
           if not len(stack): # empty command stack
             sleep_time +=1
-            if sleep_time>9: # every second
+            if sleep_time>2000: # every second
               write("M114") # ping reprap with question: actual position?
               sleep_time = 0
           if len(stack):
@@ -300,7 +306,7 @@ class ThreadingExample(object): # private create commands dispatcher
                 if order[0]<100:
                   var = "M280 P"+str(order[0])+" S"+str(order[1])
                 if order[0]==100:
-                  var = "G4 P" + order[1]
+                  var = "G4 P" + str(order[1])
                 if order[0]>100:
                   var = "G4 P1000"
                 write(var)
@@ -319,7 +325,7 @@ class ThreadingExample(object): # private create commands dispatcher
                 if debug_s:
                   print (debug_s_begin + "[=] HOME" + debug_s_end)
               if order == commands.SERVO_WAIT:
-                write("G4 P" + servo_time)
+                write("G4 P" + str(servo_time))
                 if debug_s:
                   print (debug_s_begin + "[=] SERVO_WAIT" + debug_s_end)
               if order == commands.WAIT1s:
@@ -337,8 +343,6 @@ class ThreadingExample(object): # private create commands dispatcher
 
 
 
-print ("test")
-
 
 
 
@@ -349,4 +353,9 @@ def connect(): # public run commands dispatcher
 
 
 
+
+print ("test")
+comport = "/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_556393031353516111E0-if00"
+open()
+connect()
 

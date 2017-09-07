@@ -15,8 +15,9 @@ import math
 from picamera import PiCamera
 import cv2_camera_input as camera
 camera.camera = PiCamera()
-camera.camera.shutter_speed=35*1000
 camera.start()
+time.sleep(2)
+camera.camera.shutter_speed=15*1000
 camera.overlay_transparency = 160
 print ("starting")
 time.sleep(2)
