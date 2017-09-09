@@ -11,6 +11,7 @@ import threading
 import math
 import numpy
 import re
+import os
 
 class commands:
 	NULL = 0
@@ -56,7 +57,7 @@ B = 0
 C = 0
 servo_time = 500
 
-startup = [ [0,0], [1,0], [2,0], [X, Y, Z, F], commands.READ_POS, commands.SERVO_WAIT, commands.HOME ]
+startup = [ [0,0], [1,0], [2,0], [X, Y, Z, F], commands.READ_POS, commands.SERVO_WAIT] #, commands.HOME ]
 stack = startup
 
 def moving(): # true when reprap have orders to do
@@ -175,9 +176,6 @@ def wait():
 def open(): # public
   global port_open
   ser.port=comport
-# ='/dev/ttyUSB0'
-# ='/dev/serial.by-id/usb-1a86_USB2.0-Serial-if00-port0'
-# = /dev/serial/by-id/usb-1a86_USB2.0-Serial-if00-port0
   ser.baudrate=speed
   try:
     ser.open()
@@ -209,6 +207,11 @@ def read(): # private check serial port and read
   try:
     if ser.inWaiting():
       inp = ser.readline()
+      if not inp.endswith("\n"):
+        time.sleep(0.1)
+        print("------------ this")
+        inp = inp+ser.readline()
+      
       if debug_r:
         print (debug_r_begin + "[IN]" + inp + debug_r_end)
       return(inp)
@@ -293,7 +296,7 @@ class ThreadingExample(object): # private create commands dispatcher
           reply_time=0
           if not len(stack): # empty command stack
             sleep_time +=1
-            if sleep_time>2000: # every second
+            if sleep_time>10: # every second
               write("M114") # ping reprap with question: actual position?
               sleep_time = 0
           if len(stack):
@@ -353,9 +356,21 @@ def connect(): # public run commands dispatcher
 
 
 
+# test ports and halt on broken port
+print ("Inicjalizacja sterownika RepRap. Szukam portu... ")
+if os.path.isdir("/dev/serial/by-path"): # check if any serial (usb) port installed 
+  ports = os.listdir("/dev/serial/by-path")
+  if len(ports)>1: # if too many serial ports available
+    print("Dostepne porty szeregowe: "+str(len(ports))+". Prosze pozostawic RepRap i odlaczyc pozostale urzadzenia.")
+    exit() # halt program
+  comport = "/dev/serial/by-path/"+ports[0]
+  print("Port znaleziony: "+comport) # print comport 
+else:
+  print("ERROR: nie znaleziono portu szeregowego")
+  exit()
+  
+# = "/dev/ttyUSB0"
+# = "/dev/serial/by-id/usb-1a86_USB2.0-Serial-if00-port0"
+# = "/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_556393031353516111E0-if00"
 
-print ("test")
-comport = "/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_556393031353516111E0-if00"
-open()
-connect()
 

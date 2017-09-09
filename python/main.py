@@ -5,13 +5,28 @@ import cv2
 import serial
 import sys
 import threading
+import os
+import datetime
+author = "Ertew"
+
+
+print("Oprogramowanie: cv2reprap \nAutor: "+author+" \nWersja: "+datetime.datetime.fromtimestamp(os.path.getmtime(os.path.realpath(__file__))).strftime("%y.%m.%d.%H")) # welcome message
+print("Python: "+str(sys.version_info[0:3])+" \nOpencv: "+cv2.__version__+" \n -- --- --") # welcome message
+
 
 import reprap_serial_printer as reprap
+reprap.open()
+reprap.connect()
 
-#print "TEST"
-reprap.comport = sys.argv[1]
+print("_ok_")
+
+time.sleep(100)
+#reprap.comport = False
+
+
+exit()
 if reprap.open():
-  print "SUCCESS"
+  print ("SUCCESS")
 reprap.connect()
 
 """moveAB([90, 90]) # (P0, P1)
@@ -51,7 +66,7 @@ wait()
 #while moving(): 
 #  time.sleep(1)
 
-print "Gotowe"
+print ("Gotowe")
 time.sleep(10)
 
 exit()
