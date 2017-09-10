@@ -20,8 +20,13 @@ class commands:
 	WAIT1s = 3
 	STARTUP = 4
 	READ_POS = 5
+	init57_0 = 6
+	init58_0 = 7
+	init59_0 = 8
+	init57_1 = 9
+	init58_1 = 10
+	init59_1 = 11
 	
-
 ser = serial.Serial(
   parity=serial.PARITY_NONE,
   stopbits=serial.STOPBITS_ONE,
@@ -38,7 +43,7 @@ port_open = 0 #do not read/send, wait for port open command
 busy = 1 #do not send, wait for reply from reprap
 reply_time = 0
 sleep_time = 0
-debug_r = 1 # print all data read from serial
+debug_r = 0 # print all data read from serial
 debug_r_begin = ""
 debug_r_end = ""
 debug_w = 1 # print all data write to serial
@@ -57,7 +62,8 @@ B = 0
 C = 0
 servo_time = 500
 
-startup = [ [0,0], [1,0], [2,0], [X, Y, Z, F], commands.READ_POS, commands.SERVO_WAIT] #, commands.HOME ]
+startup = [commands.init59_1, commands.init57_0, commands.init58_0, [0,0], [1,0], [2,0], [X, Y, Z, F], commands.READ_POS, commands.SERVO_WAIT, commands.HOME, commands.init59_0, commands.init57_1, commands.init58_1 ]
+
 stack = startup
 
 def moving(): # true when reprap have orders to do
@@ -133,38 +139,6 @@ def move (x=None, y=None, z=None, f=None, a=None, b=None, c=None, d=None,
     stack.insert(0, [100, servo_time])
 
 
-  
-
-def move3dS(array): # public add commnad to stack
-  if len(array)<3:
-    print ("ERROR, expected array [X, Y, Z] or [X, Y, Z, F]")
-    return (0)
-  if array[0]: # X != 0
-    X = array[0]
-  if array[1]: # Y != 0
-    Y = array[1]
-  if array[2]: # Z != 0
-    Z = array[2]
-  if len(array)>3: # speed too
-    F = array[3]
-  stack.insert(0, [X, Y, Z, F])
-
-def moveAB(array):
-  if len(array)<2: 
-    print ("ERROR, expected array [A, B] or [A, B, nodelay]")
-    return (0)
-  if array[0] != A:
-    A = array[0]
-    if A:
-      stack.insert(0, [0, A])
-  if array[0] != B:
-    B = array[1]
-    if B:
-      stack.insert(0, [1, B])
-  if len(array)<3: 
-    stack.insert(0, commands.SERVO_WAIT)
-    
-
 
 def home():
   stack.insert(0, commands.HOME)
@@ -209,14 +183,14 @@ def read(): # private check serial port and read
       inp = ser.readline()
       if not inp.endswith("\n"):
         time.sleep(0.1)
-        print("------------ this")
+        print("---- ??? ----")
         inp = inp+ser.readline()
       
       if debug_r:
         print (debug_r_begin + "[IN]" + inp + debug_r_end)
       return(inp)
   except:
-    print ("ERROR reading seial")
+    print ("ERROR: port szeregowy niedostepny do odczytu! ")
     exit()
   return (0)
 
@@ -230,7 +204,7 @@ def write(string): # private check serial port and send command
     if debug_w:
       print (debug_w_begin + "[OUT]" + string + debug_w_end)
   except:
-    print ("ERROR sending serial")
+    print ("ERROR: port szeregowy niedostepny do zapisu! ")
     exit()
 
 class ThreadingExample(object): # private create commands dispatcher
@@ -270,7 +244,7 @@ class ThreadingExample(object): # private create commands dispatcher
         #print input
         if "ok" in input:
           busy = 0
-          print ("_ok")
+          #print ("_ok")
         if "X:" in input:
           list1 = input.split("X:")
           list2 = list1[1].split(":")
@@ -289,14 +263,17 @@ class ThreadingExample(object): # private create commands dispatcher
 
         if busy: 
           reply_time += 1 # every 100ms
-          if reply_time>6000: # 60s
-            print ("ERROR: printer not respond, connection lost!")
+          if reply_time==200: # 20s - lost ACK from printer
+            print ("WARNING: Reprap nie odpowiada, proboje przywrocic lacznosc... ")
+            write("M114")
+          if reply_time>600: # 60s
+            print ("ERROR: Reprap nie odpowiada, utracono polaczenie!")
             exit()
         if not busy:
           reply_time=0
           if not len(stack): # empty command stack
             sleep_time +=1
-            if sleep_time>10: # every second
+            if sleep_time>3000: # 300s = 5min
               write("M114") # ping reprap with question: actual position?
               sleep_time = 0
           if len(stack):
@@ -313,11 +290,11 @@ class ThreadingExample(object): # private create commands dispatcher
                 if order[0]>100:
                   var = "G4 P1000"
                 write(var)
-                print(var)
+                #print(var)
               if len(order) == 4: # stepper controll
                 var = "G1 X"+str(order[0])+" Y"+str(order[1])+" Z"+str(order[2])+" F"+str(order[3])
                 write(var)
-              print (order)
+              #print (order)
             if not isinstance(order, list):
               if order == commands.NULL:
                 write("M82")
@@ -339,16 +316,22 @@ class ThreadingExample(object): # private create commands dispatcher
                 write("M114")
                 if debug_s:
                   print (debug_s_begin + "[=] READ_POS" + debug_s_end)
+              if order == commands.init57_0:
+                write("M42 P57 S0")
+              if order == commands.init58_0:
+                write("M42 P58 S0")
+              if order == commands.init59_0:
+                write("M42 P59 S0")
+              if order == commands.init57_1:
+                write("M42 P57 S255")
+              if order == commands.init58_1:
+                write("M42 P58 S255")
+              if order == commands.init59_1:
+                write("M42 P59 S255")
 
 
       time.sleep(self.interval)
       
-
-
-
-
-
-
 
 def connect(): # public run commands dispatcher
   example = ThreadingExample()
@@ -365,7 +348,7 @@ if os.path.isdir("/dev/serial/by-path"): # check if any serial (usb) port instal
     exit() # halt program
   comport = "/dev/serial/by-path/"+ports[0]
   print("Port znaleziony: "+comport) # print comport 
-else:
+else: # if no port found, halt
   print("ERROR: nie znaleziono portu szeregowego")
   exit()
   
