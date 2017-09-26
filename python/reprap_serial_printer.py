@@ -53,7 +53,7 @@ debug_s = 0 # print data read from stack
 debug_s_begin = ""
 debug_s_end = ""
 
-X = 50
+X = 70
 Y = 150
 Z = 280
 F = 1000
@@ -166,7 +166,7 @@ def open(): # public
     return(0)
   ser.flushInput()
   port_open = 1
-  ser.write("G4 P200\n") #wait P [ms]
+  ser.write("G4 P200\n".encode()) #wait P [ms]
   stack = startup # do homing, etc
   return(1)
 
@@ -180,7 +180,7 @@ def close(): # public close port
 def read(): # private check serial port and read
   try:
     if ser.inWaiting():
-      inp = ser.readline()
+      inp = ser.readline().decode()
       if not inp.endswith("\n"):
         time.sleep(0.1)
         print("---- ??? ----")
@@ -199,8 +199,8 @@ def write(string): # private check serial port and send command
   global busy
   busy = 1
   try: 
-    ser.write(string)
-    ser.write("\n")
+    ser.write(string.encode())
+    ser.write("\n".encode())
     if debug_w:
       print (debug_w_begin + "[OUT]" + string + debug_w_end)
   except:
@@ -263,10 +263,10 @@ class ThreadingExample(object): # private create commands dispatcher
 
         if busy: 
           reply_time += 1 # every 100ms
-          if reply_time==200: # 20s - lost ACK from printer
+          if reply_time==500: # 50s - lost ACK from printer
             print ("WARNING: Reprap nie odpowiada, proboje przywrocic lacznosc... ")
             write("M114")
-          if reply_time>600: # 60s
+          if reply_time>1200: # 120s
             print ("ERROR: Reprap nie odpowiada, utracono polaczenie!")
             exit()
         if not busy:
