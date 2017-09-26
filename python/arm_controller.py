@@ -23,30 +23,103 @@ act_zone = 1
 allow0 = False
 
 
-servos = [ # in min, in max, out min, out max
-  ]
-
-
 X = reprap.X
 Y = reprap.Y
 Z = reprap.Z
-A = reprap.A
-B = reprap.B
-C = reprap.C
+
 
 lastX = X
 lastY = Y
 lastZ = Z
-lastA = A
-lastB = B
-lastC = C
+
+packing_position=0
+
 
 def limit(a,b,c):  # input single value and two constants, return middle
   return(sorted((a,b,c))[1]) #of input values, limitting output to range
 
+def new_position():
+  global packing_position
+  a = packing_position
+  b = int(a/3.0)
+  c = int(b/3.0)
+  packing_position += 1
+  return(( (a-3*b), (b-3*c), c))
 
-def move (x=None, y=None, z=None, f=None, a=None, b=None, c=None, d=None,
-          dx=None, dy=None, dz=None, da=None, db=None, dc=None, zone=None):
+def place():
+  pos = new_position()
+  release(pos[0]*30, pos[2]*20, pos[1]*30, 90, 3)
+
+def servo(a=None, b=None, c=None, d=None):
+  if a: # skip 0 (OFF) and none (not changed)
+    a = limit(a, 0, 90) # 0: | verical angle; 45: / middle position; 90: -- horizontal angle
+    a *= 0.91 # set scale
+    a += 90 # set 
+    a = int(a)
+
+  if b: # skip 0 (OFF) and none (not changed)
+    if b==1: # activated = closed
+      b=11
+    else:
+      b=25
+
+  reprap.move(a=a, b=b) # update A and B servos
+
+  if c is not None: # input: 0 = off, 100 = max, negatve = [open, wait, close]
+    animation=0
+    Min=90
+    Max=50
+    if c<0:
+      animation=1
+      c=-c
+
+    c = limit(c, 0, 100)
+    if c==0:
+      reprap.move(c=Min) # standard delay
+      reprap.move(c=0) # disable servo
+      return(0) # end
+    #c = Min-int(c*(Min-Max)/100.0 ) # scale
+    c = c*(Min-Max)
+    c=int(c/100.0 )
+    c=Min-c
+    reprap.move(c=c) # update
+    if animation:
+      c=int((c+2*Min)/3) # div by three
+      reprap.move(c=c) # update
+      c=int((c+2*Min)/3) # div by three
+      reprap.move(c=c) # update
+      c=int((c+2*Min)/3) # div by three
+      reprap.move(c=c) # update
+      reprap.move(c=Min) # zero
+      reprap.move(c=0) # disable servo
+    
+
+def flip(power):
+  move(x=0, y=0, z=0, zone=4, f=100) # fast frward to safe zone
+  servo(c=-power)
+  global packing_position
+  packing_position=0
+
+def grab(x, y, z, a, zone=None, f=50):
+  move(x=x, y=y+20, z=z, f=f, zone=zone)
+  servo(a=a, b=2) # b = open
+  move(y=y, f=1) # slow down
+  servo(a=0, b=1) # release a, grab
+  move(y=y+20) # slow up
+  move(f=f) # standard speed
+
+def release(x, y, z, a, zone=None, f=50):
+  move(x=x, y=y+20, z=z, f=f, zone=zone)
+  servo(a=a) # b = not change
+  move(y=y+1, f=1) # slow down
+  servo(a=0, b=2) # release a, open
+  move(y=y+20) # slow up
+  move(f=f) # standard speed
+  servo(b=0)
+
+  
+
+def move (x=None, y=None, z=None, f=None, d=None, zone=None):
   global act_zone
   
   if zone is None: # use last known one
@@ -54,12 +127,12 @@ def move (x=None, y=None, z=None, f=None, a=None, b=None, c=None, d=None,
 
   if zone == 0 and not allow0:
     print("ERROR: strefa zero zablokowana")
-    print("Aby odblokowac zmien parametr globalny allow=True")
+    print("Aby odblokowac zmien parametr globalny allow0=True")
     print("Albo uzyj innej strefy np. move(zone=1)") 
     return(0)
 
   zone=max(zone, 0) # limit to range 0..5
-  zone=min(zone, 5)
+  zone=min(zone, 4)
 
   if f is not None: #f input max 100 [%]
     f = limit(f, 5, 100) # min speed 5%
@@ -67,40 +140,27 @@ def move (x=None, y=None, z=None, f=None, a=None, b=None, c=None, d=None,
     reprap.move(f=f) # if speed changed, send it once
 
   if zone==0: # overwrite logic and do direct move() command
-    reprap.move(x, y, z, f, a, b, c, d, dx, dy, dz, da, db, dc)
+    reprap.move(x, y, z, f, d=d)
     act_zome = zone
     return(1)
-  
-  X = None
-  Y = None
-  Z = None
-  # grab X+dX for compability  
-  if x is not None:
-    X = x
-  if dx is not None:
-    X += dx
-  if y is not None:
-    Y = y
-  if dy is not None:
-    Y += dy
-  if z is not None:
-    Z = z
-  if dz is not None:
-    Z += dz
 
-  if X is not None: # if any value applied
-    X = limit(X, 0, Zone[zone][3]) # limit to zone X size
+
+  X = x
+  Y = y
+  Z = z
+  if x is not None: # if any value applied
+    X = limit(x, 0, Zone[zone][3]) # limit to zone X size
     X += Zone[zone][0] # add zone offset
-  if Y is not None:
-    Y = limit(Y, 0, Zone[zone][4]) 
+  if y is not None:
+    Y = limit(y, 0, Zone[zone][4]) 
     Y += Zone[zone][1]
-  if Z is not None:
-    Z = limit(Z, 0, Zone[zone][5])
+  if z is not None:
+    Z = limit(z, 0, Zone[zone][5])
     Z += Zone[zone][2]
 
   
   if zone==act_zone: # same zone, do movement inside
-    reprap.move(X, Y, Z) # values already limited
+    reprap.move(X, Y, Z, d=d) # values already limited
     return(1)
 
   # else, switch between different zones:
@@ -142,9 +202,10 @@ def move (x=None, y=None, z=None, f=None, a=None, b=None, c=None, d=None,
     reprap.move(y = Y) # move inisde zone a (Y)
 
   act_zone=zone
+  reprap.move(d=d) # delay
   return(1)
 
-  
+
 
 
 
