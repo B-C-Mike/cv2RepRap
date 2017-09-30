@@ -156,14 +156,14 @@ def open(): # public
   except:
     print ("ERROR, wrong port!")
     exit()
-  time.sleep(0.1)
+  time.sleep(0.5)
   ser.setDTR(True)
-  time.sleep(0.1)
+  time.sleep(0.5)
   ser.setDTR(False) # reset reprap
   time.sleep(4) #wait until reprap boot
   if ser.inWaiting() < 500:
     print ("ERROR, no reprap connected") 
-    return(0)
+    exit()
   ser.flushInput()
   port_open = 1
   ser.write("G4 P200\n".encode()) #wait P [ms]

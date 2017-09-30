@@ -39,7 +39,7 @@ update(image) -> [ over, upScaler.wait() ]
 base = 12
 in_width = base*16*4 # 832
 in_height = base*16*3 # 624
-overlay_transparency = 90
+overlay_transparency = 120
 
 out_width = 360 # 2 * working_space [mm] (180x180mm)
 out_height = 360
@@ -198,7 +198,7 @@ class camThreadMix(Thread):
       background_mask = cv2.compare(grayscale, transparent[1], cv2.CMP_EQ) # find pixels matching (allow white and black overlay)
       overlay_mask = cv2.bitwise_not(background_mask) # inverse - create bg mask
       if transparency: # mix bg with overlay - create transparent overlay
-        transparency = transparency/250.0
+        transparency = transparency/255.0
         overlay = cv2.addWeighted(bg, transparency, overlay, 1-transparency, 0)
       # cut bg and overlay by mask 
       bg = cv2.bitwise_and(bg, bg, mask=background_mask)
@@ -230,7 +230,7 @@ class camThreadDisplay(Thread):
       image = disp_out
       
       cv2.imshow("Frame", image) # show last frame
-      cv2.moveWindow("Frame", 3, 5)
+      cv2.moveWindow("Frame", 6, 42)
       key = cv2.waitKey(50) # and display it
       if key>-1:
         key = key & 255

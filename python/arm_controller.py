@@ -206,6 +206,8 @@ def move (x=None, y=None, z=None, f=None, d=None, zone=None):
   return(1)
 
 
+def moving():
+  return reprap.moving()
 
 
 
