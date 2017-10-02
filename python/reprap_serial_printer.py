@@ -160,8 +160,8 @@ def open(): # public
   ser.setDTR(True)
   time.sleep(0.5)
   ser.setDTR(False) # reset reprap
-  time.sleep(4) #wait until reprap boot
-  if ser.inWaiting() < 500:
+  time.sleep(6) #wait until reprap boot
+  if ser.inWaiting() < 300:
     print ("ERROR, no reprap connected") 
     exit()
   ser.flushInput()

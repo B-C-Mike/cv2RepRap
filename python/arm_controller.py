@@ -14,8 +14,8 @@ Zone = [
   #                                        (max = min + delta) 
   [  0,   0,   0, 280, 200, 280], #zone 0, whole working area, limited by printer
   [100, 150,   0,   0,   0, 280], #zone 1, path between next zones
-  [ 46,  50,  20, 180,  40, 180], #zone 2, working area
-  [ 85,  86, 200,  80,  60,  80], #zone 3, destination table
+  [ 38,  50,  10, 180,  40, 180], #zone 2, working area
+  [ 85,  89, 200,  80,  60,  80], #zone 3, destination table
   [100, 150,   0,   0,   0,   0], #zone 4, escape area for activate table
   ]
 
@@ -48,12 +48,12 @@ def new_position():
 
 def place():
   pos = new_position()
-  release(pos[0]*30, pos[2]*20, pos[1]*30, 90, 3)
+  release(pos[0]*30+10, pos[2]*20, pos[1]*30+10, 90, 3)
 
 def servo(a=None, b=None, c=None, d=None):
   if a: # skip 0 (OFF) and none (not changed)
     a = limit(a, 0, 90) # 0: | verical angle; 45: / middle position; 90: -- horizontal angle
-    a *= 0.91 # set scale
+    a *= 0.93 # set scale
     a += 90 # set 
     a = int(a)
 
@@ -61,7 +61,7 @@ def servo(a=None, b=None, c=None, d=None):
     if b==1: # activated = closed
       b=11
     else:
-      b=25
+      b=30
 
   reprap.move(a=a, b=b) # update A and B servos
 
@@ -100,7 +100,7 @@ def flip(power):
   global packing_position
   packing_position=0
 
-def grab(x, y, z, a, zone=None, f=50):
+def grab(x, y, z, a, zone=None, f=100):
   move(x=x, y=y+20, z=z, f=f, zone=zone)
   servo(a=a, b=2) # b = open
   move(y=y, f=1) # slow down
@@ -108,7 +108,7 @@ def grab(x, y, z, a, zone=None, f=50):
   move(y=y+20) # slow up
   move(f=f) # standard speed
 
-def release(x, y, z, a, zone=None, f=50):
+def release(x, y, z, a, zone=None, f=100):
   move(x=x, y=y+20, z=z, f=f, zone=zone)
   servo(a=a) # b = not change
   move(y=y+1, f=1) # slow down
@@ -183,7 +183,7 @@ def move (x=None, y=None, z=None, f=None, d=None, zone=None):
     #skip if already inside zone 1
     # last values isn't important here
     reprap.move(y= Zone[act_zone][1] + Zone[act_zone][4]) # move inisde zone (Y max)
-    reprap.move(x= Zone[0][0]) # leave last zone 1 (X)
+    reprap.move(x= Zone[1][0]) # leave last zone 1 (X)
     reprap.move(y= Zone[1][1]) # move to zone 1 (Y)
     # continue moving
 

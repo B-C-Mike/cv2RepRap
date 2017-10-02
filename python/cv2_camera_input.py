@@ -43,10 +43,10 @@ overlay_transparency = 120
 
 out_width = 360 # 2 * working_space [mm] (180x180mm)
 out_height = 360
-out_left = 250
-out_right = 70
-out_top = 62
-out_bottom = 66
+out_left = 245
+out_right = 52
+out_top = 65
+out_bottom = 43
 # scale X = out_width / (in_width - left - right)
 # scale Y =    height / (in_height - top - bottom)
 input_mode = 4

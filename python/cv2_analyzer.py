@@ -18,7 +18,7 @@ import cv2_camera_input as camera
 camera.camera = PiCamera()
 camera.start()
 time.sleep(2)
-camera.camera.shutter_speed=15*1000
+camera.camera.shutter_speed=20*1000
 camera.overlay_transparency = 120
 print ("starting")
 time.sleep(1)
@@ -202,7 +202,7 @@ while True:
     move_bricks()
     time.sleep(1)
     if count+bad_count==0:
-      arm.flip(50)
+      arm.flip(60)
       
 
 
