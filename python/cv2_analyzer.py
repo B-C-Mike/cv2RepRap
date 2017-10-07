@@ -57,6 +57,10 @@ def scale(camx, camy):
   z = (camx / zscale)+dz
   return x, z
 
+arm.flip(60)
+arm.servo(a=0, b=2) # release a, open
+arm.servo(b=0) # release b
+
 while True:
   crop=cv2.cvtColor(camera.getImage(), cv2.COLOR_BGR2GRAY)
   image = camera.getOverlay()
@@ -134,7 +138,7 @@ while True:
         im2=cv2.circle(im2, (cx, cy), 4, (0, 255, 255), 2) #center circle
         continue
       
-      if size>3500: # more than single block
+      if size>2500: # more than single block
         im2=cv2.drawContours(im2, cnt, -1, (0, 0, 255), 4)
         continue
       

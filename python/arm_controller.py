@@ -14,8 +14,8 @@ Zone = [
   #                                        (max = min + delta) 
   [  0,   0,   0, 280, 200, 280], #zone 0, whole working area, limited by printer
   [100, 150,   0,   0,   0, 280], #zone 1, path between next zones
-  [ 38,  50,  10, 180,  40, 180], #zone 2, working area
-  [ 85,  89, 200,  80,  60,  80], #zone 3, destination table
+  [ 36,  50,  10, 180,  40, 180], #zone 2, working area
+  [ 85,  88, 200,  80,  60,  80], #zone 3, destination table
   [100, 150,   0,   0,   0,   0], #zone 4, escape area for activate table
   ]
 
@@ -84,11 +84,6 @@ def servo(a=None, b=None, c=None, d=None):
     c=Min-c
     reprap.move(c=c) # update
     if animation:
-      c=int((c+2*Min)/3) # div by three
-      reprap.move(c=c) # update
-      c=int((c+2*Min)/3) # div by three
-      reprap.move(c=c) # update
-      c=int((c+2*Min)/3) # div by three
       reprap.move(c=c) # update
       reprap.move(c=Min) # zero
       reprap.move(c=0) # disable servo
@@ -103,7 +98,7 @@ def flip(power):
 def grab(x, y, z, a, zone=None, f=100):
   move(x=x, y=y+20, z=z, f=f, zone=zone)
   servo(a=a, b=2) # b = open
-  move(y=y, f=1) # slow down
+  move(y=y, f=50) # slow down
   servo(a=0, b=1) # release a, grab
   move(y=y+20) # slow up
   move(f=f) # standard speed
@@ -111,7 +106,7 @@ def grab(x, y, z, a, zone=None, f=100):
 def release(x, y, z, a, zone=None, f=100):
   move(x=x, y=y+20, z=z, f=f, zone=zone)
   servo(a=a) # b = not change
-  move(y=y+1, f=1) # slow down
+  move(y=y, f=50) # slow down
   servo(a=0, b=2) # release a, open
   move(y=y+20) # slow up
   move(f=f) # standard speed
